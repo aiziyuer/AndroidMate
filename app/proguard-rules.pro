@@ -15,3 +15,6 @@
 #-keepclassmembers class fqcn.of.javascript.interface.for.webview {
 #   public *;
 #}
+
+# This plugin is fully compatible with proguard (since v2.4.0)
+-dontwarn java.lang.invoke.*

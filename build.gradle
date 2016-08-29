@@ -5,9 +5,13 @@ buildscript {
         jcenter()
     }
     dependencies {
-        classpath 'com.neenbedankt.gradle.plugins:android-apt:1.8'
         classpath 'com.android.tools.build:gradle:2.1.3'
-        classpath 'com.jakewharton:butterknife-gradle-plugin:8.4.0'
+
+        // Android ButterKnife Zelezny
+        classpath 'com.neenbedankt.gradle.plugins:android-apt:1.8'
+
+        // Android 支持Lambda
+        classpath 'me.tatarka:gradle-retrolambda:3.2.5'
 
         // NOTE: Do not place your application dependencies here; they belong
         // in the individual module build.gradle files
