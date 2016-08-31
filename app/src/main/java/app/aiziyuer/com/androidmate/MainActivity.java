@@ -16,6 +16,10 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 
+import net.sqlcipher.database.SQLiteDatabase;
+
+import java.io.File;
+
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
@@ -23,14 +27,33 @@ import butterknife.OnClick;
 public class MainActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener {
 
+    private final String TAG = getClass().toString();;
+
 
     @BindView(R.id.textView2)
     TextView textView2;
     @BindView(R.id.fingerprintCheckBtn)
     Button fingerprintCheckBtn;
 
+
+    private void InitializeSQLCipher() {
+        SQLiteDatabase.loadLibs(this);
+        File databaseFile = getDatabasePath("demo.db");
+
+        Log.d(TAG, databaseFile.getAbsolutePath());
+
+        databaseFile.mkdirs();
+        databaseFile.delete();
+        SQLiteDatabase database = SQLiteDatabase.openOrCreateDatabase(databaseFile, "test123", null);
+        database.execSQL("create table t1(a, b)");
+        database.execSQL("insert into t1(a, b) values(?, ?)", new Object[]{"one for the money",
+                "two for the show"});
+    }
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         ButterKnife.bind(this);
@@ -50,6 +73,8 @@ public class MainActivity extends AppCompatActivity
         NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
         navigationView.setNavigationItemSelectedListener(this);
 
+
+        InitializeSQLCipher();
 
     }
 
