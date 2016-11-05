@@ -3,13 +3,13 @@ apply plugin: 'android-apt'
 apply plugin: 'me.tatarka.retrolambda' // 让Android支持Lambda表达式
 
 android {
-    compileSdkVersion 23
+    compileSdkVersion 25
     buildToolsVersion "24.0.2"
 
     defaultConfig {
         applicationId "app.aiziyuer.com.androidmate"
         minSdkVersion 23
-        targetSdkVersion 23
+        targetSdkVersion 25
         versionCode 1
         versionName "1.0"
     }
@@ -38,10 +38,21 @@ dependencies {
     // Android ButterKnife Zelezny -- end
 
     // 加密用的sqlite数据库
-    compile 'net.zetetic:android-database-sqlcipher:3.5.3@aar'
+    // compile 'net.zetetic:android-database-sqlcipher:3.5.3@aar'
+    compile 'com.github.satyan:sugar:1.5'
+    compile 'com.readystatesoftware.sqliteasset:sqliteassethelper:2.0.1'
 
-    compile 'com.android.support:appcompat-v7:23.4.0'
-    compile 'com.android.support:support-v4:23.4.0'
-    compile 'com.android.support:design:23.4.0'
+    // 专门处理数据类
+    compile 'org.projectlombok:lombok:1.16.8'
+
+    // 调试库
+    compile 'com.facebook.stetho:stetho:1.4.1'
+
+    compile group: 'commons-io', name: 'commons-io', version: '2.4'
+    compile group: 'commons-dbutils', name: 'commons-dbutils', version: '1.6'
+
+    compile 'com.android.support:appcompat-v7:25.0.0'
+    compile 'com.android.support:support-v4:25.0.0'
+    compile 'com.android.support:design:25.0.0'
 
 }

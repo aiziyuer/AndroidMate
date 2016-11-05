@@ -1,4 +1,4 @@
-package app.aiziyuer.com.androidmate;
+package com.aiziyuer.app;
 
 import android.app.Application;
 import android.test.ApplicationTestCase;
