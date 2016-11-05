@@ -1,9 +1,14 @@
 package app.aiziyuer.com.androidmate;
 
 import android.os.Bundle;
+import android.security.keystore.KeyGenParameterSpec;
+import android.security.keystore.KeyPermanentlyInvalidatedException;
+import android.security.keystore.KeyProperties;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.NavigationView;
 import android.support.design.widget.Snackbar;
+import android.support.v4.hardware.fingerprint.FingerprintManagerCompat;
+import android.support.v4.os.CancellationSignal;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarDrawerToggle;
@@ -19,6 +24,15 @@ import android.widget.TextView;
 import net.sqlcipher.database.SQLiteDatabase;
 
 import java.io.File;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.InvalidKeyException;
+import java.security.Key;
+import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
+
+import javax.crypto.Cipher;
+import javax.crypto.KeyGenerator;
+import javax.crypto.NoSuchPaddingException;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
@@ -27,13 +41,15 @@ import butterknife.OnClick;
 public class MainActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener {
 
-    private final String TAG = getClass().toString();;
-
+    private final String TAG = getClass().toString();
 
     @BindView(R.id.textView2)
     TextView textView2;
     @BindView(R.id.fingerprintCheckBtn)
     Button fingerprintCheckBtn;
+    private CancellationSignal cancellationSignal;
+    private FingerprintManagerCompat fingerprintManager;
+    private Cipher cipher;
 
 
     protected void InitializeSQLCipher() {
@@ -44,7 +60,8 @@ public class MainActivity extends AppCompatActivity
 
         databaseFile.mkdirs();
         databaseFile.delete();
-        SQLiteDatabase database = SQLiteDatabase.openOrCreateDatabase(databaseFile, "test123", null);
+        SQLiteDatabase database = SQLiteDatabase.openOrCreateDatabase(databaseFile, "test123",
+                null);
         database.execSQL("create table t1(a, b)");
         database.execSQL("insert into t1(a, b) values(?, ?)", new Object[]{"one for the money",
                 "two for the show"});
@@ -62,12 +79,14 @@ public class MainActivity extends AppCompatActivity
 
         FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
         assert fab != null;
-        fab.setOnClickListener(view -> Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
+        fab.setOnClickListener(view -> Snackbar.make(view, "Replace with your own action",
+                Snackbar.LENGTH_LONG)
                 .setAction("Action", null).show());
 
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
         ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
-                this, drawer, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
+                this, drawer, toolbar, R.string.navigation_drawer_open, R.string
+                .navigation_drawer_close);
         assert drawer != null;
         drawer.setDrawerListener(toggle);
         toggle.syncState();
@@ -76,6 +95,42 @@ public class MainActivity extends AppCompatActivity
         assert navigationView != null;
         navigationView.setNavigationItemSelectedListener(this);
 
+        cancellationSignal = new CancellationSignal();
+        fingerprintManager = FingerprintManagerCompat.from(this);
+
+        try {
+            // This can be key name you want. Should be unique for the app.
+            String KEY_NAME = "com.aiziyuer.app.androidmate.fingerprint_authentication_key";
+            // We always use this keystore on Android.
+            String KEYSTORE_NAME = "AndroidKeyStore";
+            // Should be no need to change these values.
+            String KEY_ALGORITHM = KeyProperties.KEY_ALGORITHM_AES;
+            String BLOCK_MODE = KeyProperties.BLOCK_MODE_CBC;
+            String ENCRYPTION_PADDING = KeyProperties.ENCRYPTION_PADDING_PKCS7;
+            String TRANSFORMATION = KEY_ALGORITHM + "/" +
+                    BLOCK_MODE + "/" +
+                    ENCRYPTION_PADDING;
+
+            // 生成Cipher
+            KeyGenerator keyGen = KeyGenerator.getInstance(KEY_ALGORITHM, KEYSTORE_NAME);
+            KeyGenParameterSpec keyGenSpec =
+                    new KeyGenParameterSpec.Builder(KEY_NAME, KeyProperties.PURPOSE_ENCRYPT |
+                            KeyProperties.PURPOSE_DECRYPT)
+                            .setBlockModes(BLOCK_MODE)
+                            .setEncryptionPaddings(ENCRYPTION_PADDING)
+                            .setUserAuthenticationRequired(true)
+                            .build();
+            keyGen.init(keyGenSpec);
+            Key key = keyGen.generateKey();
+
+            cipher = Cipher.getInstance(TRANSFORMATION);
+            cipher.init(Cipher.ENCRYPT_MODE, key);
+        } catch (KeyPermanentlyInvalidatedException e) {
+            Log.e("MainActivity", "Could not create the cipher for fingerprint authentication.", e);
+        } catch (NoSuchAlgorithmException | NoSuchProviderException | InvalidKeyException |
+                NoSuchPaddingException | InvalidAlgorithmParameterException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -119,8 +174,7 @@ public class MainActivity extends AppCompatActivity
         Log.d("MainActivity", "item:" + item);
 
         boolean ret = true;
-        switch (id)
-        {
+        switch (id) {
             case R.id.nav_safebox:
                 // 启动一个safebox的页面
 
@@ -128,8 +182,8 @@ public class MainActivity extends AppCompatActivity
 
                 break;
 
-           default:
-               ret = false;
+            default:
+                ret = false;
         }
 
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
@@ -146,7 +200,61 @@ public class MainActivity extends AppCompatActivity
                 break;
             case R.id.fingerprintCheckBtn:
                 Log.d("fingerprintCheckBtn", "click");
+
+                if (!fingerprintManager.isHardwareDetected()) {
+                    Log.e("MainActivity", "not detected hardware.");
+
+                } else if (!fingerprintManager.hasEnrolledFingerprints()) {
+                    Log.e("MainActivity", "not rolled fingerprints.");
+                } else {
+
+                    try {
+
+                        fingerprintManager.authenticate(new FingerprintManagerCompat.CryptoObject
+                                (cipher), 0, cancellationSignal, new FingerprintManagerCompat
+                                .AuthenticationCallback() {
+                            @Override
+                            public void onAuthenticationSucceeded(FingerprintManagerCompat
+                                                                          .AuthenticationResult
+                                                                          result) {
+                                super.onAuthenticationSucceeded(result);
+                                try {
+                                    result.getCryptoObject().getCipher().doFinal();
+                                } catch (Exception e) {
+                                    Log.e("MainActivity", e.toString());
+                                }
+
+                            }
+
+                            @Override
+                            public void onAuthenticationError(int errMsgId, CharSequence
+                                    errString) {
+                                super.onAuthenticationError(errMsgId, errString);
+                            }
+
+                            @Override
+                            public void onAuthenticationFailed() {
+                                super.onAuthenticationFailed();
+                            }
+
+                            @Override
+                            public void onAuthenticationHelp(int helpMsgId, CharSequence
+                                    helpString) {
+                                super.onAuthenticationHelp(helpMsgId, helpString);
+                            }
+                        }, null);
+
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
                 break;
         }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        cancellationSignal.cancel();
     }
 }
