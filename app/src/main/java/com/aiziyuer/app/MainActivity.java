@@ -35,9 +35,6 @@ public class MainActivity extends AppCompatActivity
     TextView textView2;
     @BindView(com.aiziyuer.app.R.id.fingerprintCheckBtn)
     Button fingerprintCheckBtn;
-    private CancellationSignal cancellationSignal;
-    private FingerprintManagerCompat fingerprintManager;
-    private Cipher cipher;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -70,44 +67,6 @@ public class MainActivity extends AppCompatActivity
         assert navigationView != null;
         navigationView.setNavigationItemSelectedListener(this);
 
-
-//        cancellationSignal = new CancellationSignal();
-//        fingerprintManager = FingerprintManagerCompat.from(this);
-//
-//        try {
-//            // This can be key name you want. Should be unique for the app.
-//            String KEY_NAME = "com.aiziyuer.app.androidmate.fingerprint_authentication_key";
-//            // We always use this keystore on Android.
-//            String KEYSTORE_NAME = "AndroidKeyStore";
-//            // Should be no need to change these values.
-//            String KEY_ALGORITHM = KeyProperties.KEY_ALGORITHM_AES;
-//            String BLOCK_MODE = KeyProperties.BLOCK_MODE_CBC;
-//            String ENCRYPTION_PADDING = KeyProperties.ENCRYPTION_PADDING_PKCS7;
-//            String TRANSFORMATION = KEY_ALGORITHM + "/" +
-//                    BLOCK_MODE + "/" +
-//                    ENCRYPTION_PADDING;
-//
-//            // 生成Cipher
-//            KeyGenerator keyGen = KeyGenerator.getInstance(KEY_ALGORITHM, KEYSTORE_NAME);
-//            KeyGenParameterSpec keyGenSpec =
-//                    new KeyGenParameterSpec.Builder(KEY_NAME, KeyProperties.PURPOSE_ENCRYPT |
-//                            KeyProperties.PURPOSE_DECRYPT)
-//                            .setBlockModes(BLOCK_MODE)
-//                            .setEncryptionPaddings(ENCRYPTION_PADDING)
-//                            .setUserAuthenticationRequired(true)
-//                            .build();
-//            keyGen.init(keyGenSpec);
-//            Key key = keyGen.generateKey();
-//
-//            cipher = Cipher.getInstance(TRANSFORMATION);
-//            cipher.init(Cipher.ENCRYPT_MODE, key);
-//        } catch (KeyPermanentlyInvalidatedException e) {
-//            Log.e("MainActivity", "Could not create the cipher for fingerprint authentication
-// .", e);
-//        } catch (NoSuchAlgorithmException | NoSuchProviderException | InvalidKeyException |
-//                NoSuchPaddingException | InvalidAlgorithmParameterException e) {
-//            e.printStackTrace();
-//        }
     }
 
     @Override
@@ -239,6 +198,5 @@ public class MainActivity extends AppCompatActivity
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        cancellationSignal.cancel();
     }
 }
