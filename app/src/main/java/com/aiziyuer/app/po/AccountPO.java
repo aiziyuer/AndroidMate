@@ -1,7 +1,5 @@
 package com.aiziyuer.app.po;
 
-import android.support.annotation.CallSuper;
-
 import com.orm.SugarRecord;
 import com.orm.dsl.Table;
 

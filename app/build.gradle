@@ -48,8 +48,12 @@ dependencies {
     // 调试库
     compile 'com.facebook.stetho:stetho:1.4.1'
 
+    // 通用库
     compile group: 'commons-io', name: 'commons-io', version: '2.4'
     compile group: 'commons-dbutils', name: 'commons-dbutils', version: '1.6'
+
+    // 指纹识别封装类库
+    compile 'com.mtramin:rxfingerprint:2.0.0'
 
     compile 'com.android.support:appcompat-v7:25.0.0'
     compile 'com.android.support:support-v4:25.0.0'

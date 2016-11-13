@@ -2,29 +2,15 @@ package com.aiziyuer.app;
 
 import android.app.Application;
 import android.content.SharedPreferences;
-import android.hardware.fingerprint.FingerprintManager;
-import android.security.keystore.KeyGenParameterSpec;
-import android.security.keystore.KeyPermanentlyInvalidatedException;
-import android.security.keystore.KeyProperties;
 import android.util.Log;
 
-import com.aiziyuer.app.auth.FingerprintHelper;
 import com.aiziyuer.app.common.AppConstant;
 import com.facebook.stetho.Stetho;
+import com.mtramin.rxfingerprint.RxFingerprint;
 import com.orm.SugarContext;
 
-import java.security.InvalidAlgorithmParameterException;
-import java.security.InvalidKeyException;
-import java.security.Key;
-import java.security.NoSuchAlgorithmException;
-import java.security.NoSuchProviderException;
-
-import javax.crypto.Cipher;
-import javax.crypto.KeyGenerator;
-import javax.crypto.NoSuchPaddingException;
-
-import static android.hardware.fingerprint.FingerprintManager.*;
-import static com.aiziyuer.app.auth.FingerprintHelper.*;
+import io.reactivex.disposables.Disposable;
+import io.reactivex.disposables.Disposables;
 
 /**
  * 应用程序的入口
@@ -36,9 +22,9 @@ public class CoreApplication extends Application {
 
     private static final String TAG = "CoreApplication";
 
+    private Disposable fingerprintDisposable = Disposables.empty();
+
     private static CoreApplication app;
-    private FingerprintHelper helper;
-    private AbstractAuthenticationCallback callback;
 
     public static CoreApplication getInstance() {
         return app;
@@ -53,64 +39,79 @@ public class CoreApplication extends Application {
             Stetho.initializeWithDefaults(this);
             SugarContext.init(this);
 
-            helper = new FingerprintHelper(this);
-
-            globalSettings = getSharedPreferences(AppConstant
-                    .GLOBAL_SHARED_PREFERENCE, 0);
-
-            // 判断是否系统中已经有了加密用的AES密钥
-            if (!globalSettings.contains(AppConstant.PRIVATE_KEY)) {
-                callback = new CoreAuthenticationCallback("my key");
-
-                helper.generateKey(); // 里面会生成一个新的AES密钥并且存储在AndroidKeyStore里面, 需要指纹解锁后才可以访问
-                helper.setPurpose(KeyProperties.PURPOSE_ENCRYPT);
-                helper.authenticate(callback);
-
+            if (RxFingerprint.isUnavailable(this)) {
+                return;
             }
 
-            // TODO 测试
+            String stringToEncrypt = "Hello world";
+            fingerprintDisposable = RxFingerprint.encrypt(this, stringToEncrypt)
+                    .subscribe(fingerprintEncryptionResult -> {
+                        switch (fingerprintEncryptionResult.getResult()) {
+                            case FAILED:
+                                Log.i(TAG, "Fingerprint not recognized, try " +
+                                        "again!");
+                                break;
+                            case HELP:
+                                Log.i(TAG, fingerprintEncryptionResult
+                                        .getMessage());
+                                break;
+                            case AUTHENTICATED:
+                                String encrypted =
+                                        fingerprintEncryptionResult
+                                                .getEncrypted();
+                                Log.d(TAG, encrypted);
+                                // 验证成功后就关闭
+                                fingerprintDisposable.dispose();
+
+                                // 解密
+                                fingerprintDisposable = RxFingerprint.decrypt(this,
+                                        encrypted)
+                                        .subscribe(fingerprintDecryptionResult -> {
+                                            switch (fingerprintDecryptionResult.getResult()) {
+                                                case FAILED:
+                                                    Log.i(TAG, "Fingerprint not recognized, try " +
+                                                            "again!");
+                                                    break;
+                                                case HELP:
+                                                    Log.i(TAG, fingerprintEncryptionResult
+                                                            .getMessage());
+                                                    break;
+                                                case AUTHENTICATED:
+                                                    String decrypted =
+                                                            fingerprintDecryptionResult
+                                                                    .getDecrypted();
+                                                    Log.d(TAG, decrypted);
+                                                    fingerprintDisposable.dispose();
+                                                    break;
+                                            }
+                                        }, throwable -> {
+                                            if (RxFingerprint.keyInvalidated(throwable)) {
+                                                // 需要重新验证
+                                                // TODO
+                                            }
+                                            Log.e("ERROR", "decrypt", throwable);
+                                        });
+
+                                break;
+                        }
+                    }, throwable -> {
+                        if (RxFingerprint.keyInvalidated(throwable)) {
+                            // 需要重新验证
+                            // TODO
+                        }
+                        Log.e("ERROR", "encrypt", throwable);
+                    });
 
             app = this;
         } catch (Exception e) {
             System.exit(0);
+            fingerprintDisposable.dispose();
         }
     }
 
-
-    private class CoreAuthenticationCallback extends FingerprintHelper
-            .AbstractAuthenticationCallback {
-
-        boolean isFirst = true;
-
-        CoreAuthenticationCallback(String originalData) {
-            super(originalData);
-        }
-
-        @Override
-        protected void onAuthenticationSucceeded(String value) {
-
-            Log.i(TAG, "onAuthenticationSucceeded, value: " + value + ".");
-
-            // 考虑把密钥放到全局配置里
-            System.out.println(value);
-
-            helper.stopAuthenticate();
-
-            if (isFirst) {
-                setOriginalData(value);
-                helper.setPurpose(KeyProperties.PURPOSE_DECRYPT);
-                helper.authenticate(callback);
-                helper.stopAuthenticate();
-                isFirst = false;
-            }
-        }
-
-        @Override
-        protected void onAuthenticationFail() {
-            Log.e(TAG, "onAuthenticationFail");
-            helper.stopAuthenticate();
-        }
+    @Override
+    public void onTerminate() {
+        super.onTerminate();
+        fingerprintDisposable.dispose();
     }
-
-
 }
